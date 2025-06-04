@@ -42,3 +42,5 @@ vignettes/*.pdf
 
 # Other files
 *.html
+
+/.quarto/

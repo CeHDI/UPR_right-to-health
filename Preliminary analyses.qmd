@@ -1,0 +1,168 @@
+---
+title: "Preliminary analyses for considering the Right to Health in the Universal Periodic Review"
+author: "Anshu Uppal"
+date: "2025-06-03"
+date-modified: last-modified # Dynamic modified date
+format:
+        html:
+                code-fold: true
+                toc: true
+                toc-location: left  # Place TOC on the left side
+                toc-depth: 5        # Include headers up to level 3 (###)
+                toc-title: "On this page" # Custom title for the TOC
+                smooth-scroll: true # Enable smooth scrolling
+                embed-resources: true # Make the html file self contained
+reference-location: margin
+citation-location: margin
+---
+
+## Setup
+```{r}
+# install.packages("data.table")
+pacman::p_load(
+  here,
+  tidyverse,
+  janitor,
+  DT
+)
+```
+
+Read in the UPR data from the SDG data from the "Human Rights Data Explorer" (created and maintained by the Danish Institute for Human Rights):
+<https://sdgdata.humanrights.dk/en/mechanisms/upr/cycle-4>
+(Navigate to the link above and click "download all data" - the download preparation takes >30 minutes)
+
+I then converted the CSV file to RDS format to save space:
+```{r}
+# Download from https://sdgdata.humanrights.dk/en/solr-explorer
+sdg_data <- readRDS(here("data","sdg_data.rds")) |> 
+  janitor::clean_names() |> 
+  mutate_if(is.character, ~na_if(., "")) |> # convert blank spaces to true NA
+  filter(mechanism == "Universal Periodic Review") |> 
+  rename(state_under_review = state) |> 
+  mutate(
+    year = ymd(paste0(year, "01-01")),
+    cycle = factor(cycle),
+    sdg_linked = factor(case_when(sdg_goals == "No SDG link identified" ~ "No SDG link",
+                                  .default = "Linked to an SDG"), 
+                        levels = c("No SDG link", "Linked to an SDG"))
+  ) |> 
+  relocate(sdg_linked, .after = sdg_goals)
+
+# Alternatively download straight from OHCHR website
+# https://uhri.ohchr.org/en/our-data-api 
+```
+
+### Create definitions of right to health
+I then created a set of keywords to assign recommendations as being related to the "right to health". This is a key step to refine in case we opt for an automated process. Some of the keywords are partial words because I use a partial word matching (e.g. "prophyla" will match with both "prophylaxis" as well as "prophylactics"). **Need to be careful to not accidentally include irrelevent terms.**
+```{r}
+health_keywords <- "health|well-being|wellbeing|sanitation|sanitary|disease|sick|infectio|nutrition|TB|tuberculosis|malaria|HIV|hospital|clinic|vaccin|medic|doctor|nurse|nursing|maternal|pregnan|prenatal|postnatal|neonatal|breasfe|obstetric|medic|diabetes|cancer|blood|hypertension|respiratory|contracep|abortion|prophyla|violence against women|violence against children|domestic violence|gender-based violence|sexual violence|marital violence|gender violence|hunger|malnutrition|sexual abuse|mortality|leprosy|famine|drought|food|hygiene|disabili|tobacco|smoking"
+```
+
+### Apply the definitions
+```{r}
+sdg_data <- sdg_data |> 
+  mutate(
+    health_related = factor(case_when(
+      str_detect(tolower(text), health_keywords)| 
+        str_detect(tolower(sdg_goals), "health|sanitation")
+      # str_detect(targets, "5.6|16.1|16.2")
+      ~ "Health-related",
+      str_detect(tolower(text), "abuse|maltreatment|violence|sexual")&
+        str_detect(tolower(text), "child|girl|women|sexual|domestic|gender|marital")~ "Health-related",
+      .default = "Not health-related"
+    ), levels = c("Not health-related", "Health-related"))
+  ) |> 
+  relocate(health_related, .after = text)
+```
+
+**Percentage of recommendations linked to the right to health:**
+```{r}
+sdg_data |> 
+  group_by(cycle) |> 
+  count(health_related) |> 
+  mutate(perc = n/sum(n)*100) |> 
+  ggplot(aes(x = cycle, y = n, fill = health_related, label = paste0(n, " (", round(perc,1), "%)")))+
+  geom_col()+
+  labs(y = "Number of recommendations", x = "UPR Cycle", 
+       title = "UPR recommendations related to the right to health, per cycle",
+       fill = "")+
+  geom_text(position = position_stack(), vjust = 1)+
+  theme_bw()
+```
+
+**Percentage of recommendations linked to SDGs**
+```{r}
+sdg_data |> 
+  group_by(cycle, health_related) |> 
+  count(sdg_linked) |> 
+  mutate(perc = n/sum(n)*100) |> 
+  ggplot(aes(x = cycle, y = n, fill = sdg_linked, label = paste0(round(perc,1), "%")))+
+  facet_grid(~ health_related, 
+             scales = "free_x", 
+             space = "free_x", 
+             switch = "x"
+  )+
+  geom_col()+
+  labs(x = "Number of recommendations", x = "Cycle", fill = "",
+       title = "UPR recommendations that have been linked to an SDG target")+
+  geom_text(position = position_stack(), vjust = 1)+
+  theme_bw()
+```
+
+## Further explore the assigned recommendations
+
+I've split the recommendations into two groups here, one where they've been linked to the right to health and one where the link has not been made. These can be explored and inspected, for example by adding in keywords into the filters, so that we can make sure that we aren't missing or inappropriately including recommendations within our definitions for the "right to health".
+
+```{css}
+/* set the DT table fontsizes */
+th { font-size: 11px; } /* header font */
+td { font-size: 11px; } /* cell font */
+```
+### Linked to right to health:
+```{r}
+#| warning: false
+
+sdg_data |> 
+  mutate(state_under_review = factor(state_under_review)) |> 
+  filter(health_related == "Health-related") |> 
+  select(text, sdg_goals, groups, state_under_review, cycle, document_code, paragraph) |> 
+  DT::datatable(
+    filter = "top",
+    options = list(
+      pageLength = 100,
+      deferRender = TRUE,
+      scrollY = 400,
+      scrollX = TRUE,
+      scroller = TRUE,
+      autoWidth = TRUE,      
+      columnDefs = list(list(width = '10%', targets = c(1)))
+    ),
+    rownames = FALSE, # set to FALSE for cleaner look
+    class = 'cell-border stripe hover compact'
+  )
+
+```
+
+### Not linked to right to health:
+```{r}
+#| warning: false
+
+sdg_data |> 
+  mutate(state_under_review = factor(state_under_review)) |> 
+  filter(health_related == "Not health-related") |> 
+  select(text, sdg_goals, groups, state_under_review, cycle, document_code, paragraph) |> 
+  DT::datatable(
+    filter = "top",
+    options = list(
+      pageLength = 100,
+      deferRender = TRUE,
+      scrollY = 400,
+      scrollX = TRUE,
+      scroller = TRUE,
+      autoWidth = TRUE,      
+      columnDefs = list(list(width = '10%', targets = c(1)))
+    ),
+    rownames = FALSE, # set to FALSE for cleaner look
+    class = 'cell-border stripe hover compact'
+  )
+```

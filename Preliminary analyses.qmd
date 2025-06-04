@@ -186,7 +186,9 @@ td { font-size: 11px; } /* cell font */
 sdg_data |> 
   mutate(state_under_review = factor(state_under_review)) |> 
   filter(health_related == "Health-related") |> 
-  select(text, sdg_goals, groups, state_under_review, response_upr, cycle, document_code, paragraph) |> 
+  select(text, 
+         # sdg_goals, groups, 
+         state_under_review, response_upr, cycle, document_code, paragraph) |> 
   DT::datatable(
     filter = "top",
     options = list(
@@ -211,7 +213,9 @@ sdg_data |>
 sdg_data |> 
   mutate(state_under_review = factor(state_under_review)) |> 
   filter(health_related == "Not health-related") |> 
-  select(text, sdg_goals, groups, state_under_review, cycle, document_code, paragraph) |> 
+  select(text, 
+         # sdg_goals, groups, 
+         state_under_review, cycle, document_code, paragraph) |> 
   DT::datatable(
     filter = "top",
     options = list(

@@ -65,11 +65,17 @@ sdg_data <- readRDS(here("data","sdg_data.rds")) |>
 I then created a set of keywords to assign recommendations as being related to the "right to health". This is a key step to refine in case we opt for an automated process. Some of the keywords are partial words because I use a partial word matching (e.g. "prophyla" will match with both "prophylaxis" as well as "prophylactics"). **Need to be careful to not accidentally include irrelevent terms.**
 ```{r}
 # Define keywords to use to identify recommendations related to the right to health
-health_keywords <- "health|well-being|wellbeing|sanitation|sanitary|disease|sick|infectio|nutrition|TB|tuberculosis|malaria|HIV|hospital|clinic|vaccin|immunisation|immunization|medic|doctor|nurse|nursing|maternal|contracep|abortion|reproductive|pregnan|prenatal|postnatal|neonatal|breasfe|obstetric|medic|diabetes|cancer|blood|hypertension|respiratory|prophyla|violence against women|violence against children|domestic violence|gender-based violence|sexual violence|marital violence|gender violence|virginity|hunger|malnutrition|sexual abuse|mortality|leprosy|famine|drought|food|hygiene|disabili|tobacco|smoking|child marriage|forced marriage|infanticide|mutilation|honor crime|honor killing|honour crime|honour killing|breast ironing|harmful practices|harmful traditional practices|disaster"
+health_keywords <- "health|well-being|wellbeing|sanitation|sanitary|safe water|clean water|right to water|disease|sick|infectio|nutrition|TB|tuberculosis|malaria|HIV|hospital|clinic|vaccin|immunisation|immunization|virus|viral|medic|doctor|nurse|nursing|maternal|contracep|abortion|reproductive|pregnan|prenatal|postnatal|neonatal|breasfe|obstetric|fertility|medic|diabetes|cancer|blood|hypertension|respiratory|prophyla|violence against women|violence against children|domestic violence|gender-based violence|sexual violence|marital violence|gender violence|virginity|hunger|malnutrition|obesity|sexual abuse|mortality|leprosy|famine|drought|food|hygiene|tobacco|smoking|child marriage|forced marriage|infanticide|mutilation|honor crime|honor killing|honour crime|honour killing|breast ironing|harmful practices|harmful traditional practices|disaster|disabled|disabili"
 
 # Define combinations of keywords for the right to health
-keywords_comb1 <- "child|girl|women|sexual|domestic|gender|marital"
-keywords_comb2 <- "abuse|maltreatment|violence|sexual"
+keywords_comb1a <- "child|girl|women|sexual|domestic|gender|marital"
+keywords_comb1b <- "abuse|maltreatment|violence|sexual"
+
+keywords_comb2a <- "forced"
+keywords_comb2b <- "marriage"
+
+keywords_comb3a <- "sex|gender|civil identity|transgender"
+keywords_comb3b <- "surgery|sterili"
 ```
 
 ### Apply the definitions
@@ -81,8 +87,16 @@ sdg_data <- sdg_data |>
         str_detect(tolower(sdg_goals), "health|sanitation")
       # str_detect(targets, "5.6|16.1|16.2")
       ~ "Health-related",
-      str_detect(tolower(text), keywords_comb1)&
-        str_detect(tolower(text), keywords_comb2)~ "Health-related",
+      # Combo 1
+      str_detect(tolower(text), keywords_comb1a)&
+        str_detect(tolower(text), keywords_comb1b)~ "Health-related",
+      # Combo 2
+      str_detect(tolower(text), keywords_comb2a)&
+        str_detect(tolower(text), keywords_comb2b)~ "Health-related",
+      # Combo 3
+      str_detect(tolower(text), keywords_comb3a)&
+        str_detect(tolower(text), keywords_comb3b)~ "Health-related",
+      
       .default = "Not health-related"
     ), levels = c("Not health-related", "Health-related"))
   ) |> 
@@ -193,12 +207,14 @@ td { font-size: 11px; } /* cell font */
 ```{r}
 #| warning: false
 
-sdg_data |> 
+yes_health <- sdg_data |> 
   mutate(state_under_review = factor(state_under_review)) |> 
   filter(health_related == "Health-related") |> 
   select(text, sdg_goals,
          # groups, 
-         state_under_review, response_upr, cycle, document_code, paragraph) |> 
+         state_under_review, response_upr, cycle, document_code, paragraph)
+
+yes_health |> 
   DT::datatable(
     filter = "top",
     options = list(
@@ -217,16 +233,58 @@ sdg_data |>
 
 ```
 
+###### Random sample
+```{r}
+yes_health |> slice_sample(n = 500) |> 
+  DT::datatable(
+    filter = "top",
+    options = list(
+      pageLength = 100,
+      deferRender = TRUE,
+      scrollY = 400,
+      scrollX = TRUE,
+      scroller = TRUE,
+      autoWidth = TRUE,      
+      columnDefs = list(list(width = '500px', targets = c(0)),
+                        list(width = '200px', targets = c(1)))
+    ),
+    rownames = FALSE, # set to FALSE for cleaner look
+    class = 'cell-border stripe hover compact'
+  )
+```
+
 ##### Not linked to right to health:
 ```{r}
 #| warning: false
 
-sdg_data |> 
+not_health <- sdg_data |> 
   mutate(state_under_review = factor(state_under_review)) |> 
   filter(health_related == "Not health-related") |> 
   select(text, sdg_goals, 
          # groups, 
-         state_under_review, cycle, document_code, paragraph) |> 
+         state_under_review, cycle, document_code, paragraph)
+
+not_health |> 
+  DT::datatable(
+    filter = "top",
+    options = list(
+      pageLength = 100,
+      deferRender = TRUE,
+      scrollY = 400,
+      scrollX = TRUE,
+      scroller = TRUE,
+      autoWidth = TRUE,      
+      columnDefs = list(list(width = '500px', targets = c(0)),
+                        list(width = '200px', targets = c(1)))
+    ),
+    rownames = FALSE, # set to FALSE for cleaner look
+    class = 'cell-border stripe hover compact'
+  )
+```
+
+###### Random sample
+```{r}
+not_health |> slice_sample(n = 500) |> 
   DT::datatable(
     filter = "top",
     options = list(

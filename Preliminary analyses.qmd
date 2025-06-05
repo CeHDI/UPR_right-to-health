@@ -109,13 +109,17 @@ sdg_data <- sdg_data |>
 sdg_data |> 
   group_by(cycle) |> 
   count(health_related) |> 
-  mutate(perc = n/sum(n)*100) |> 
-  ggplot(aes(x = cycle, y = n, fill = health_related, label = paste0(n, " (", round(perc,1), "%)")))+
+  mutate(perc = n/sum(n)*100,
+         n_tot = sum(n)) |> 
+  ggplot(aes(x = cycle, y = n, fill = health_related))+
   geom_col()+
   labs(y = "Number of recommendations", x = "UPR Cycle", 
        title = "UPR recommendations related to the right to health, per cycle",
        fill = "")+
-  geom_text(position = position_stack(), vjust = 1)+
+  geom_text(aes(label = paste0("(",round(perc,1), "%)"), y = n/2), vjust = 0.5)+
+  geom_text(aes(label = format(n_tot, big.mark = ","), y = n_tot, vjust =-0.2))+
+  # geom_text(aes(label = paste0("n = ", format(n, big.mark = ","))))+
+  # geom_text(aes(label = paste0("n = ", scales::label_comma(n))), position = position_stack(), vjust = 1)+
   theme_bw()
 ```
 
@@ -365,7 +369,7 @@ UHC_all <- bind_rows(UHC_AVAILABILITY_SCORE, UHC_INDEX_REPORTED,
     year = ymd(paste0(YEAR, "-01-01")),
     region_name = case_when(GLOBAL == "GLOBAL" ~ "Global", 
                             .default = region_name)
-    )
+  )
 
 # Maternal mortality ratio
 MMR <- get_gho_data(code = "MDG_0000000026") |> 
@@ -391,7 +395,7 @@ UHC_all |>
                              "Sudan", "Argentina")) |> 
   mutate(indicator_fullname = str_to_sentence(
     str_remove(indicator_fullname, "UHC Service Coverage sub-index on ")
-    )) |> 
+  )) |> 
   ggplot(aes(x=year, y = NumericValue, color = indicator_fullname, shape = indicator_fullname))+
   geom_point()+
   geom_line()+
@@ -410,8 +414,8 @@ UHC_all |>
 MMR |> 
   filter(country_name %in% c(
     "India", "Namibia", "Rwanda", "Sierra Leone",
-                             "Sudan",
-                             "Argentina")) |> 
+    "Sudan",
+    "Argentina")) |> 
   filter(year > ymd("1994-01-01")) |> 
   ggplot(aes(x=year, y = NumericValue))+
   geom_line(color = "tomato", size = 1)+

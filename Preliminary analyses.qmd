@@ -68,8 +68,8 @@ I then created a set of keywords to assign recommendations as being related to t
 health_keywords <- "health|well-being|wellbeing|sanitation|sanitary|safe water|clean water|right to water|disease|sick|infectio|nutrition|TB|tuberculosis|malaria|HIV|hospital|clinic|vaccin|immunisation|immunization|virus|viral|medic|doctor|nurse|nursing|maternal|contracep|abortion|reproductive|pregnan|prenatal|postnatal|neonatal|breasfe|obstetric|fertility|medic|diabetes|cancer|blood|hypertension|respiratory|prophyla|violence against women|violence against children|domestic violence|gender-based violence|sexual violence|marital violence|gender violence|virginity|hunger|malnutrition|obesity|sexual abuse|mortality|leprosy|famine|drought|food|hygiene|tobacco|smoking|child marriage|forced marriage|infanticide|mutilation|honor crime|honor killing|honour crime|honour killing|breast ironing|harmful practices|harmful traditional practices|disaster|disabled|disabili"
 
 # Define combinations of keywords for the right to health
-keywords_comb1a <- "child|girl|women|sexual|domestic|gender|marital"
-keywords_comb1b <- "abuse|maltreatment|violence|sexual"
+keywords_comb1a <- "child|girl|women|sexual|domestic|gender|marital|lgbt"
+keywords_comb1b <- "abuse|maltreatment|violence|sexual|same-sex"
 
 keywords_comb2a <- "forced"
 keywords_comb2b <- "marriage"
@@ -203,7 +203,10 @@ th { font-size: 11px; } /* header font */
 td { font-size: 11px; } /* cell font */
 ```
 
-##### Linked to right to health:
+::: {.panel-tabset}
+##### Linked to right to health
+::: {.panel-tabset}
+###### Full data
 ```{r}
 #| warning: false
 
@@ -241,7 +244,7 @@ yes_health |> slice_sample(n = 500) |>
     options = list(
       pageLength = 100,
       deferRender = TRUE,
-      scrollY = 400,
+      scrollY = 800,
       scrollX = TRUE,
       scroller = TRUE,
       autoWidth = TRUE,      
@@ -252,8 +255,10 @@ yes_health |> slice_sample(n = 500) |>
     class = 'cell-border stripe hover compact'
   )
 ```
-
-##### Not linked to right to health:
+:::
+##### Not linked to right to health
+::: {.panel-tabset}
+###### Full data
 ```{r}
 #| warning: false
 
@@ -262,7 +267,7 @@ not_health <- sdg_data |>
   filter(health_related == "Not health-related") |> 
   select(text, sdg_goals, 
          # groups, 
-         state_under_review, cycle, document_code, paragraph)
+         state_under_review, response_upr, cycle, document_code, paragraph)
 
 not_health |> 
   DT::datatable(
@@ -290,7 +295,7 @@ not_health |> slice_sample(n = 500) |>
     options = list(
       pageLength = 100,
       deferRender = TRUE,
-      scrollY = 400,
+      scrollY = 800,
       scrollX = TRUE,
       scroller = TRUE,
       autoWidth = TRUE,      
@@ -301,7 +306,8 @@ not_health |> slice_sample(n = 500) |>
     class = 'cell-border stripe hover compact'
   )
 ```
-
+:::
+:::
 ## Focus on Cycle 3
 
 ### Load in dataset from UPR Info

@@ -18,12 +18,17 @@ citation-location: margin
 
 ## Setup
 ```{r}
-# install.packages("data.table")
 pacman::p_load(
   here,
   tidyverse,
   janitor,
   DT
+)
+
+# Load or install packages from GitHub:
+pacman::p_load_gh(
+  "DrMattG/SDGsR", # Uses API to get SDGs data
+  "aphp/rgho" # Uses API to get data from Global Health Observatory
 )
 ```
 
@@ -59,7 +64,12 @@ sdg_data <- readRDS(here("data","sdg_data.rds")) |>
 ### Create definitions of right to health
 I then created a set of keywords to assign recommendations as being related to the "right to health". This is a key step to refine in case we opt for an automated process. Some of the keywords are partial words because I use a partial word matching (e.g. "prophyla" will match with both "prophylaxis" as well as "prophylactics"). **Need to be careful to not accidentally include irrelevent terms.**
 ```{r}
-health_keywords <- "health|well-being|wellbeing|sanitation|sanitary|disease|sick|infectio|nutrition|TB|tuberculosis|malaria|HIV|hospital|clinic|vaccin|medic|doctor|nurse|nursing|maternal|pregnan|prenatal|postnatal|neonatal|breasfe|obstetric|medic|diabetes|cancer|blood|hypertension|respiratory|contracep|abortion|prophyla|violence against women|violence against children|domestic violence|gender-based violence|sexual violence|marital violence|gender violence|hunger|malnutrition|sexual abuse|mortality|leprosy|famine|drought|food|hygiene|disabili|tobacco|smoking"
+# Define keywords to use to identify recommendations related to the right to health
+health_keywords <- "health|well-being|wellbeing|sanitation|sanitary|disease|sick|infectio|nutrition|TB|tuberculosis|malaria|HIV|hospital|clinic|vaccin|immunisation|immunization|medic|doctor|nurse|nursing|maternal|contracep|abortion|reproductive|pregnan|prenatal|postnatal|neonatal|breasfe|obstetric|medic|diabetes|cancer|blood|hypertension|respiratory|prophyla|violence against women|violence against children|domestic violence|gender-based violence|sexual violence|marital violence|gender violence|virginity|hunger|malnutrition|sexual abuse|mortality|leprosy|famine|drought|food|hygiene|disabili|tobacco|smoking|child marriage|forced marriage|infanticide|mutilation|honor crime|honor killing|honour crime|honour killing|breast ironing|harmful practices|harmful traditional practices|disaster"
+
+# Define combinations of keywords for the right to health
+keywords_comb1 <- "child|girl|women|sexual|domestic|gender|marital"
+keywords_comb2 <- "abuse|maltreatment|violence|sexual"
 ```
 
 ### Apply the definitions
@@ -71,8 +81,8 @@ sdg_data <- sdg_data |>
         str_detect(tolower(sdg_goals), "health|sanitation")
       # str_detect(targets, "5.6|16.1|16.2")
       ~ "Health-related",
-      str_detect(tolower(text), "abuse|maltreatment|violence|sexual")&
-        str_detect(tolower(text), "child|girl|women|sexual|domestic|gender|marital")~ "Health-related",
+      str_detect(tolower(text), keywords_comb1)&
+        str_detect(tolower(text), keywords_comb2)~ "Health-related",
       .default = "Not health-related"
     ), levels = c("Not health-related", "Health-related"))
   ) |> 
@@ -186,8 +196,8 @@ td { font-size: 11px; } /* cell font */
 sdg_data |> 
   mutate(state_under_review = factor(state_under_review)) |> 
   filter(health_related == "Health-related") |> 
-  select(text, 
-         # sdg_goals, groups, 
+  select(text, sdg_goals,
+         # groups, 
          state_under_review, response_upr, cycle, document_code, paragraph) |> 
   DT::datatable(
     filter = "top",
@@ -198,7 +208,8 @@ sdg_data |>
       scrollX = TRUE,
       scroller = TRUE,
       autoWidth = TRUE,      
-      columnDefs = list(list(width = '30%', targets = c(1)))
+      columnDefs = list(list(width = '500px', targets = c(0)),
+                        list(width = '200px', targets = c(1)))
     ),
     rownames = FALSE, # set to FALSE for cleaner look
     class = 'cell-border stripe hover compact'
@@ -213,8 +224,8 @@ sdg_data |>
 sdg_data |> 
   mutate(state_under_review = factor(state_under_review)) |> 
   filter(health_related == "Not health-related") |> 
-  select(text, 
-         # sdg_goals, groups, 
+  select(text, sdg_goals, 
+         # groups, 
          state_under_review, cycle, document_code, paragraph) |> 
   DT::datatable(
     filter = "top",
@@ -225,7 +236,8 @@ sdg_data |>
       scrollX = TRUE,
       scroller = TRUE,
       autoWidth = TRUE,      
-      columnDefs = list(list(width = '30%', targets = c(1)))
+      columnDefs = list(list(width = '500px', targets = c(0)),
+                        list(width = '200px', targets = c(1)))
     ),
     rownames = FALSE, # set to FALSE for cleaner look
     class = 'cell-border stripe hover compact'
@@ -253,5 +265,115 @@ I downloaded the UPR Info dataset on 2025-06-03 as several individual files (the
 #     sdg_data |> filter(cycle == "Cycle 3") |> droplevels(), 
 #     join_by(state_under_review, title)
 #     )
+```
+
+## Link to Indicators from GHO
+
+Make API calls to the GHO database to download the data related to the UHC indicators and to the indicator for maternal mortality ratio
+```{r}
+#| message: false
+
+## Metadata ####
+gho_codes <- get_gho_values(dimension = "GHO") |> 
+  rename(IndicatorCode=Code, indicator_fullname = Title)
+country_codes <- get_gho_values(dimension = "COUNTRY") |> 
+  rename(COUNTRY = Code, country_name = Title)
+region_codes <- get_gho_values(dimension = "REGION") |> 
+  rename(REGION = Code, region_name = Title)
+
+# Get the UHC data
+UHC_AVAILABILITY_SCORE <- get_gho_data(code = "UHC_AVAILABILITY_SCORE")
+UHC_INDEX_REPORTED <- get_gho_data(code = "UHC_INDEX_REPORTED")
+UHC_SCI_CAPACITY <- get_gho_data(code = "UHC_SCI_CAPACITY")
+UHC_SCI_INFECT <- get_gho_data(code = "UHC_SCI_INFECT")
+UHC_SCI_NCD <- get_gho_data(code = "UHC_SCI_NCD")
+UHC_SCI_RMNCH <- get_gho_data(code = "UHC_SCI_RMNCH")
+
+# Combine the datasets and tag indicator and country full names
+UHC_all <- bind_rows(UHC_AVAILABILITY_SCORE, UHC_INDEX_REPORTED, 
+                     UHC_SCI_CAPACITY, UHC_SCI_INFECT,
+                     UHC_SCI_NCD, UHC_SCI_RMNCH) |> 
+  left_join(country_codes) |> 
+  left_join(gho_codes) |> 
+  left_join(region_codes) |> 
+  mutate(
+    NumericValue = as.numeric(NumericValue),
+    year = ymd(paste0(YEAR, "-01-01")),
+    region_name = case_when(GLOBAL == "GLOBAL" ~ "Global", 
+                            .default = region_name)
+    )
+
+# Maternal mortality ratio
+MMR <- get_gho_data(code = "MDG_0000000026") |> 
+  left_join(country_codes) |> 
+  left_join(gho_codes) |> 
+  left_join(region_codes) |> 
+  mutate(
+    NumericValue = as.numeric(NumericValue),
+    year = ymd(paste0(YEAR, "-01-01")),
+    region_name = case_when(GLOBAL == "GLOBAL" ~ "Global", 
+                            .default = region_name)
+  )
+```
+
+### Plots
+#### UHC Indicators
+```{r}
+# Plot
+UHC_all |> 
+  filter(!IndicatorCode %in% c("UHC_AVAILABILITY_SCORE",
+                               "UHC_INDEX_REPORTED")) |> 
+  filter(country_name %in% c("India", "Namibia", "Rwanda", "Sierra Leone", 
+                             "Sudan", "Argentina")) |> 
+  mutate(indicator_fullname = str_to_sentence(
+    str_remove(indicator_fullname, "UHC Service Coverage sub-index on ")
+    )) |> 
+  ggplot(aes(x=year, y = NumericValue, color = indicator_fullname, shape = indicator_fullname))+
+  geom_point()+
+  geom_line()+
+  labs(y = "Index value",
+       x = "Year",
+       title = "UHC Service Coverage Sub-Indexes", color = "", shape = "")+
+  facet_wrap(.~country_name)+
+  theme_bw()+
+  theme(legend.position = "bottom")+
+  guides(color=guide_legend(nrow=2,byrow=TRUE))
+```
+
+#### Maternal mortality ratio
+```{r}
+# Plot
+MMR |> 
+  filter(country_name %in% c(
+    "India", "Namibia", "Rwanda", "Sierra Leone",
+                             "Sudan",
+                             "Argentina")) |> 
+  filter(year > ymd("1994-01-01")) |> 
+  ggplot(aes(x=year, y = NumericValue))+
+  geom_line(color = "tomato", size = 1)+
+  labs(y = "Index value",
+       x = "Year",
+       title = "Maternal mortality ratio (per 100,000 live births)")+
+  facet_wrap(.~country_name, scales = "free")+
+  theme_bw()+
+  theme(legend.position = "bottom")+
+  guides(color=guide_legend(nrow=2,byrow=TRUE))
+
+# Plot
+MMR |> 
+  filter(!is.na(region_name)) |> 
+  filter(!region_name %in% c("Global")) |> 
+  # filter(year > ymd("1994-01-01")) |> 
+  ggplot(aes(x=year, y = NumericValue, color = region_name))+
+  geom_line(size = 1)+
+  labs(y = "Value",
+       x = "Year",
+       title = "Maternal mortality ratio (per 100,000 live births)",
+       color = "")+
+  # facet_wrap(.~region_name)+
+  theme_bw()+
+  theme(legend.position = "bottom")+
+  guides(color=guide_legend(nrow=2,byrow=TRUE))
+
 ```
 

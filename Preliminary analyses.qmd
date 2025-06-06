@@ -112,11 +112,11 @@ sdg_data |>
   mutate(perc = n/sum(n)*100,
          n_tot = sum(n)) |> 
   ggplot(aes(x = cycle, y = n, fill = health_related))+
-  geom_col()+
+  geom_bar(stat = "identity")+
   labs(y = "Number of recommendations", x = "UPR Cycle", 
        title = "UPR recommendations related to the right to health, per cycle",
-       fill = "")+
-  geom_text(aes(label = paste0("(",round(perc,1), "%)"), y = n/2), vjust = 0.5)+
+       fill = NULL)+
+  geom_text(aes(label = paste0(round(perc,1), "%")), position = position_stack(vjust = 0.5))+
   geom_text(aes(label = format(n_tot, big.mark = ","), y = n_tot, vjust =-0.2))+
   # geom_text(aes(label = paste0("n = ", format(n, big.mark = ","))))+
   # geom_text(aes(label = paste0("n = ", scales::label_comma(n))), position = position_stack(), vjust = 1)+
@@ -128,27 +128,31 @@ sdg_data |>
 sdg_data |> 
   group_by(cycle, health_related) |> 
   count(sdg_linked) |> 
-  mutate(perc = n/sum(n)*100) |> 
+  mutate(perc = n/sum(n)*100,
+         n_tot = sum(n)) |> 
   ggplot(aes(x = cycle, y = n, fill = sdg_linked, label = paste0(round(perc,1), "%")))+
   facet_grid(~ health_related, 
              scales = "free_x", 
              space = "free_x", 
              switch = "x"
   )+
-  geom_col()+
+  geom_bar(stat = "identity")+
   labs(x = "Number of recommendations", x = "Cycle", fill = "",
        title = "UPR recommendations that have been linked to an SDG target")+
-  geom_text(position = position_stack(), vjust = 1)+
+  geom_text(aes(label = paste0(round(perc,1), "%")), position = position_stack(vjust = 0.5))+
+  geom_text(aes(label = format(n_tot, big.mark = ","), y = n_tot, vjust =-0.2))+
   theme_bw()
 ```
 
 #### State responses to UPR recommendations - by linkage to right to health
 ```{r}
 sdg_data |> 
-  filter(!is.na(response_upr)) |> 
+  filter(!is.na(response_upr)) |>
+  filter(response_upr != "Supported/Noted") |> 
   group_by(cycle, health_related) |> 
   count(response_upr) |> 
-  mutate(perc = n/sum(n)*100) |> 
+  mutate(perc = n/sum(n)*100,
+         n_tot = sum(n)) |>   
   ggplot(aes(x = cycle, y = n, fill = response_upr, label = paste0(round(perc,1), "%")))+
   facet_grid(~ health_related, 
              scales = "free_x", 
@@ -158,7 +162,8 @@ sdg_data |>
   geom_col()+
   labs(x = "Number of recommendations", x = "Cycle", fill = "",
        title = "State responses to UPR recommendations")+
-  geom_text(position = position_stack(), vjust = -0.5)+
+  geom_text(aes(label = paste0(round(perc,1), "%")), position = position_stack(vjust = 0.5))+
+  geom_text(aes(label = format(n_tot, big.mark = ","), y = n_tot, vjust =-0.2))+
   theme_bw()
 ```
 
@@ -166,9 +171,11 @@ sdg_data |>
 ```{r}
 sdg_data |> 
   filter(!is.na(response_upr)) |> 
+  filter(response_upr != "Supported/Noted") |> 
   group_by(cycle, sdg_linked) |> 
   count(response_upr) |> 
-  mutate(perc = n/sum(n)*100) |> 
+  mutate(perc = n/sum(n)*100,
+         n_tot = sum(n)) |> 
   ggplot(aes(x = cycle, y = n, fill = response_upr, label = paste0(round(perc,1), "%")))+
   facet_grid(~ sdg_linked, 
              scales = "free_x", 
@@ -178,7 +185,8 @@ sdg_data |>
   geom_col()+
   labs(x = "Number of recommendations", x = "Cycle", fill = "",
        title = "State responses to UPR recommendations")+
-  geom_text(position = position_stack(), vjust = -0.5)+
+  geom_text(aes(label = paste0(round(perc,1), "%")), position = position_stack(vjust = 0.5))+
+  geom_text(aes(label = format(n_tot, big.mark = ","), y = n_tot, vjust =-0.2))+
   theme_bw()
 ```
 
@@ -186,15 +194,18 @@ sdg_data |>
 ```{r}
 sdg_data |> 
   filter(!is.na(response_upr)) |> 
+  filter(response_upr != "Supported/Noted") |> 
   group_by(cycle) |> 
   count(response_upr) |> 
-  mutate(perc = n/sum(n)*100) |> 
-  ggplot(aes(x = cycle, y = n, fill = response_upr, label = paste0(round(perc,1), "%")))+
-  geom_col(position = "dodge")+
+  mutate(perc = n/sum(n)*100,
+         n_tot = sum(n)) |> 
+  ggplot(aes(x = cycle, y = n, fill = response_upr))+
+  geom_col()+
   labs(y = "Number of recommendations", x = "UPR Cycle", 
        title = "State responses to UPR recommendations",
        fill = "")+
-  geom_text(position = position_dodge(width = 0.9), vjust = -0.5)+
+  geom_text(aes(label = paste0(round(perc,1), "%")), position = position_stack(vjust = 0.5))+
+  geom_text(aes(label = format(n_tot, big.mark = ","), y = n_tot, vjust =-0.2))+
   theme_bw()
 ```
 
